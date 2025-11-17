@@ -1,0 +1,7 @@
+Navigate to Accounts tab and verify that 'Ledges' account is available.
+Navigate to Sales tab and verify that a lead of 'Robert Anderson' is available.
+Navigate to the home page.
+Close the browser.
+
+
+      
