@@ -35,7 +35,6 @@ logs/
 # Test results
 test-results/
 playwright-report/
-test_plan/
 
 # Node modules
 node_modules/
