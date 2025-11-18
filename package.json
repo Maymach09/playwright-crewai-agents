@@ -1,16 +1,39 @@
 {
-  "name": "playwright_agents",
+  "name": "playwright-crewai-agents",
   "version": "1.0.0",
-  "description": "",
+  "description": "AI-powered Playwright test automation using CrewAI multi-agent framework",
   "main": "index.js",
-  "scripts": {},
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:chromium": "playwright test --project=chromium",
+    "test:debug": "playwright test --debug",
+    "report": "playwright show-report",
+    "save-auth": "npx tsx save-auth.ts",
+    "codegen": "playwright codegen"
+  },
+  "keywords": [
+    "playwright",
+    "testing",
+    "ai",
+    "crewai",
+    "automation",
+    "test-generation"
+  ],
+  "author": "Playwright CrewAI Agents",
+  "license": "MIT",
   "type": "module",
   "devDependencies": {
     "@playwright/mcp": "^0.0.45",
     "@playwright/test": "^1.56.1",
     "@types/node": "^24.9.2"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Maymach09/playwright-crewai-agents"
+  },
+  "bugs": {
+    "url": "https://github.com/Maymach09/playwright-crewai-agents/issues"
+  },
+  "homepage": "https://github.com/Maymach09/playwright-crewai-agents#readme"
 }

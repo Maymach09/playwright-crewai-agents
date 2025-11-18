@@ -2,6 +2,7 @@
 .env
 *.env
 auth_state.json
+.github
 
 # Python
 __pycache__/

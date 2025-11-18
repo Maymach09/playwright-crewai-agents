@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "playwright-crewai-agents"
+version = "1.0.0"
+description = "AI-powered Playwright test automation using CrewAI multi-agent framework"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Playwright CrewAI Agents"}
+]
+keywords = ["playwright", "testing", "ai", "crewai", "automation", "test-generation"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Software Development :: Quality Assurance",
+]
+requires-python = ">=3.13"
+dependencies = [
+    "crewai>=0.1.0",
+    "crewai_tools>=0.1.0",
+    "streamlit>=1.28.0",
+    "python-dotenv>=1.0.0",
+    "pyyaml>=6.0.0",
+    "mcp>=0.1.0",
+    "tenacity>=8.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pylint>=3.0.0",
+    "black>=23.0.0",
+    "mypy>=1.5.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Maymach09/playwright-crewai-agents"
+Repository = "https://github.com/Maymach09/playwright-crewai-agents"
+Issues = "https://github.com/Maymach09/playwright-crewai-agents/issues"
+
+[project.scripts]
+playwright-agents = "src.test_ai_assistant.main:main"
+
+[tool.setuptools]
+packages = ["src", "src.test_ai_assistant", "src.test_ai_assistant.tools", "src.test_ai_assistant.config"]
+
+[tool.black]
+line-length = 100
+target-version = ["py313"]
+
+[tool.pylint]
+max-line-length = 100
+disable = ["C0111", "C0103"]
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true

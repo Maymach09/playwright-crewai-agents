@@ -1,6 +1,0 @@
-Navigate to Accounts tab.
-Create a new account with mocked up data.
-Navigate to Sales tab.
-Create a new lead with mocked up data.
-Navigate to the home page.
-Close the browser.
