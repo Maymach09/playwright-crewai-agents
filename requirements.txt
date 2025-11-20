@@ -6,6 +6,10 @@ pyyaml>=6.0.0
 mcp>=0.1.0
 tenacity>=8.0.0
 
+# RAG (Retrieval-Augmented Generation)
+chromadb>=0.4.0              # Vector database (local, fast, free)
+sentence-transformers>=2.2.0  # Create embeddings from text
+
 # UI (optional)
 streamlit>=1.28.0
 

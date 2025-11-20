@@ -8,21 +8,45 @@ plan_test_task:
 
     **STEP-BY-STEP WORKFLOW:**
     
-    Step 1: Setup the browser environment
+    Step 1: Check RAG for existing knowledge (SEARCH FIRST!)
+    - **FIRST: Call `search_application_knowledge` with the scenario description**
+    - Example: search_application_knowledge("delete account salesforce")
+    - **CRITICAL: Evaluate if RAG results match your EXACT scenario**
+      * Does the action match? (create vs delete vs edit vs view)
+      * Does the module match? (accounts vs contacts vs leads)
+      * Is the flow complete for your scenario?
+    - **If RAG has EXACT match (same action + module):**
+      * Use the cached navigation, locators, and flow directly
+      * Skip to Step 4 (documentation) using cached details
+      * Saves 5+ minutes of exploration!
+    - **If RAG has PARTIAL match (same module, different action):**
+      * Use cached navigation to module (e.g., Home → Accounts)
+      * Proceed to Step 2 to explore the specific action (e.g., delete)
+      * You'll save time on navigation but need to discover the new action
+    - **If RAG returns nothing or unrelated results:**
+      * Proceed to Step 2 (full live exploration)
+    
+    Step 2: Setup the browser environment (if exploration needed)
+    - **You must do this if:**
+      * RAG had no results
+      * RAG had partial match (different action)
+      * RAG had low confidence match
     - Call `planner_setup_page` with these exact parameters:
       * project: "chromium"
       * seedFile: "tests/seed.spec.ts"
     - Wait for the page to load completely
     
-    Step 2: Explore the application
+    Step 3: Explore the application (if exploration needed)
     - Use `browser_snapshot` to see the current page structure
     - Identify all interactive elements (buttons, links, forms, inputs)
     - Note the exact text labels, roles, and element types
+    - **If you have partial RAG match:** Start from the known point (e.g., already know how to reach Accounts)
     
-    Step 3: Navigate and discover features
+    Step 3b: Navigate and discover features
     - Use `browser_click` to navigate through different sections
     - Use `browser_snapshot` after each navigation to document new pages
     - Map out the complete user flow for the scenario
+    - **Record all discovered elements with their exact locators**
     
     Step 4: Document findings
     - Create detailed test scenarios with:
@@ -32,7 +56,21 @@ plan_test_task:
       * Expected results after each step
     - Include both happy path and edge cases
     
-    Step 5: Save the test plan
+    Step 5: Store knowledge in RAG (MANDATORY AFTER EXPLORATION!)
+    - **⚠️ CRITICAL: If you explored the application (Steps 2-3), you MUST call `store_application_knowledge`**
+    - **This is NOT optional - you must cache what you discovered!**
+    - Provide:
+      * scenario: Brief description (e.g., "Delete Account in Salesforce")
+      * navigation_path: Steps to reach feature (e.g., "Home → Accounts → Show Actions → Delete")
+      * elements_discovered: All UI elements with exact locators (getByRole patterns)
+      * application: App name (e.g., "salesforce")
+      * module: Section name (e.g., "accounts")
+      * action: Action type (e.g., "delete" - must match the ACTUAL action you explored)
+    - This caches your exploration for future tests!
+    - **DO NOT skip this step after exploration - it defeats the purpose of RAG!**
+    
+    Step 6: Save the test plan (ONLY AFTER storing in RAG)
+    - **First complete Step 5, then save the file**
     - Use `fs_write_file` to save to test_plan/<timestamp>_test-plan.md
     - Use markdown format with clear sections and headings
     
@@ -63,11 +101,17 @@ plan_test_task:
     ```
     
     **IMPORTANT:**
-    - Base everything on actual browser_snapshot outputs
+    - **ALWAYS search RAG first before exploring!** (saves 5+ minutes per test)
+    - **RAG must match your EXACT action - don't use "create" knowledge for "delete"!**
+    - If RAG doesn't match, you MUST explore the browser
+    - Base everything on actual browser_snapshot outputs (or exact RAG cache)
     - Do NOT make assumptions about elements
     - Include exact element text and labels
     - Number all steps clearly
     - Make scenarios detailed enough for automated test generation
+    - **⚠️ MANDATORY: After ANY exploration (Steps 2-3), call `store_application_knowledge` before saving file!**
+    - **DO NOT skip RAG storage - every exploration must be cached for future use!**
+    - **DO NOT return incomplete plans - must have full step-by-step actions**
 
   expected_output: >
     A complete test plan markdown file saved to test_plan/<timestamp>_test-plan.md
@@ -223,8 +267,18 @@ heal_test_task:
     - Note ONLY the error type and message (don't save full output)
     - Count failing tests and plan to fix them ONE BY ONE
     
-    Step 2: For FIRST failing test - Analyze error from message
+    Step 2: For FIRST failing test - Search RAG for proven fixes
     - Extract the error message from Step 1 test run output
+    - **FIRST: Call `search_error_fixes` with the error message text**
+    - RAG will return proven solutions from past successful fixes
+    - If RAG returns relevant fixes:
+      * Review the suggested solutions
+      * Apply the highest success rate fix
+      * Go directly to Step 4 (apply fix)
+    - If RAG returns nothing or fixes aren't relevant:
+      * Proceed to Step 2b (manual analysis)
+    
+    Step 2b: Manual error analysis (if RAG has no matches)
     - **DO NOT use browser tools - error message has everything you need**
     - Playwright errors show:
       * Exact error type (strict mode violation, timeout, assertion failed)
@@ -248,15 +302,17 @@ heal_test_task:
     - Use `fs_write_file` to save the fixed test
     - Keep the fix minimal (only change the failing line)
     
-    Step 5: Verify the fix (MAX 1 retry)
+    Step 5: Verify the fix (MAX 2 retries for different errors)
     - Call `playwright_test_run_test` with:
       * locations: ["tests/test.spec.ts"] (the specific test file as a list)
       * projects: ["chromium"]
-    - If PASSES: Move to next failing test (go to Step 2)
+    - If PASSES: 
+      * Call `store_successful_fix` to cache the fix in RAG
+      * Move to next failing test (go to Step 2)
     - If FAILS: Read new error message
       * If same error: Mark as test.fixme() with explanation
-      * If different error: Try fix ONE more time (go to Step 4)
-    - After 2 attempts total, mark as fixme and move on
+      * If different error: This is a cascading error, go back to Step 2 (search RAG for new error)
+    - After 3 attempts total (1 initial + 2 retries), mark as fixme and move on
     
     Step 6: Repeat for remaining tests
     - Return to Step 2 for next failing test

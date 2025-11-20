@@ -2,8 +2,12 @@ import os
 import json
 import glob
 import logging
+import sys
 from typing import Dict, Any, Optional
 from datetime import datetime
+
+# Add the project root to the Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from src.test_ai_assistant.crew import PlaywrightAutomationCrew
 
@@ -357,7 +361,7 @@ if __name__ == "__main__":
     if command == "planner":
         print("📋 Running Test Planner Agent\n")
         result = run_planner(
-            user_input="Navigate to Salesforce Accounts module and create a new account with minimum required data.",
+            user_input="Navigate to Salesforce Accounts module and edit an existing account with a new name.",
         )
         print("\n✅ Planner Result:")
         print(json.dumps(result, indent=2, default=str))

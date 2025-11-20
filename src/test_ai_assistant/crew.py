@@ -12,6 +12,7 @@ from crewai.project import CrewBase, agent, task, crew
 from src.test_ai_assistant.tools.playwright_test_mcp import PlaywrightTestMCP
 from src.test_ai_assistant.tools.filesystem_mcp import FilesystemMCP
 from src.test_ai_assistant.tools.playwright_mcp import PlaywrightMCP
+from src.test_ai_assistant.tools import RAG_TOOLS
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 
@@ -168,7 +169,8 @@ class PlaywrightAutomationCrew:
             "fs_write_file",             # Write test plan
         }]
 
-        planning_tools = playwright_test_selected + filesystem_selected
+        # Add RAG tools for test plan search
+        planning_tools = playwright_test_selected + filesystem_selected + RAG_TOOLS
         logger.info(f"Planning Agent Tools ({len(planning_tools)}): {[t.name for t in planning_tools]}")
 
         agent = Agent(
@@ -218,7 +220,8 @@ class PlaywrightAutomationCrew:
             "fs_list_directory",         # Check existing tests
         }]
 
-        generation_tools = playwright_test_selected + filesystem_selected
+        # Add RAG tools for code pattern search
+        generation_tools = playwright_test_selected + filesystem_selected + RAG_TOOLS
         logger.info(f"Generation Agent Tools ({len(generation_tools)}): {[t.name for t in generation_tools]}")
 
         agent = Agent(
@@ -244,12 +247,13 @@ class PlaywrightAutomationCrew:
         """
         logger.info("\n--- Creating test_healer_agent ---")
         
-        # Healer gets ALL tools for maximum debugging capability
-        logger.info(f"Healer Agent Tools ({len(self.test_tools)}): All tools available")
+        # Healer gets ALL tools + RAG for maximum debugging capability
+        healer_tools = self.test_tools + RAG_TOOLS
+        logger.info(f"Healer Agent Tools ({len(healer_tools)}): All tools + RAG available")
         
         agent = Agent(
             config=self.agents_config["test_healer_agent"],
-            tools=self.test_tools,
+            tools=healer_tools,
             llm=self.healing_llm,
             verbose=True,
             memory=True,
