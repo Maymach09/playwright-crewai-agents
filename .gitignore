@@ -54,7 +54,10 @@ Thumbs.db
 # Playwright
 playwright/.auth/
 
-# RAG
+# RAG Storage (contains learned knowledge)
+rag_storage/
+
+# RAG Documentation (temporary/generated files)
 RAG_FILES_SUMMARY.md
 RAG_QUICK_REFERENCE.md
 RAG_IMPLEMENTATION.md
@@ -62,3 +65,11 @@ RAG_INTEGRATION_ROADMAP.md
 test_rag_integration.py
 test_rag_tools.py
 test_rag.py
+
+# Test Plans (generated outputs)
+test_plan/
+
+# Credentials and Auth
+auth_state.json
+save-auth.ts
+scenarios_test_accounts.txt
