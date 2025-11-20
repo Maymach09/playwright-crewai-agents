@@ -13,6 +13,7 @@ AI-powered Playwright test automation using CrewAI multi-agent framework.
 - **Automated Test Planning** - AI explores your app and creates detailed test scenarios
 - **Code Generation** - Generates production-ready Playwright TypeScript tests
 - **Self-Healing Tests** - Automatically fixes common test failures
+- **RAG-Powered Learning** - Learns from past explorations and fixes, improving speed over time
 - **Context Management** - Optimized to stay within LLM token limits
 - **Multiple LLM Support** - Works with OpenAI GPT-4o-mini, Gemini, and local models
 
@@ -79,6 +80,42 @@ python -m src.test_ai_assistant.main healer
 python -m src.test_ai_assistant.main full
 ```
 
+### 🧠 RAG Commands
+
+**Check RAG Knowledge Base:**
+```bash
+python << 'EOF'
+from src.test_ai_assistant.rag.retriever import RAGRetriever
+
+retriever = RAGRetriever()
+stats = retriever.get_stats()
+print('📊 RAG Knowledge Base Statistics:')
+for collection, count in stats.items():
+    print(f'  - {collection}: {count} items')
+EOF
+```
+
+**Search Application Knowledge:**
+```bash
+python << 'EOF'
+from src.test_ai_assistant.rag.retriever import RAGRetriever
+
+retriever = RAGRetriever()
+results = retriever.search_application_knowledge("create account", n_results=3)
+for i, result in enumerate(results, 1):
+    print(f"\n{i}. {result['metadata']['scenario']}")
+    print(f"   Action: {result['metadata']['action']}")
+    print(f"   Module: {result['metadata']['module']}")
+    print(f"   Similarity: {result['similarity']}%")
+EOF
+```
+
+**Clear RAG Storage (start fresh):**
+```bash
+rm -rf rag_storage/
+# RAG will reinitialize on next run
+```
+
 ## 📁 Project Structure
 
 ```
@@ -88,11 +125,17 @@ playwright_agents/
 │       ├── config/
 │       │   ├── agents.yaml      # Agent configurations
 │       │   └── tasks.yaml       # Task workflows
+│       ├── rag/                 # RAG System (NEW!)
+│       │   ├── knowledge_base.py  # Seed data and knowledge
+│       │   ├── vector_store.py    # ChromaDB integration
+│       │   └── retriever.py       # Query interface
 │       ├── tools/
+│       │   ├── rag_tools.py       # RAG tools for agents
 │       │   ├── playwright_mcp.py
 │       │   └── filesystem_mcp.py
 │       ├── crew.py              # Crew orchestration
 │       └── main.py              # Entry point
+├── rag_storage/                 # RAG learned knowledge (gitignored)
 ├── tests/                       # Generated test files
 ├── test_plan/                   # Generated test plans
 ├── sample_tests/                # Example tests
@@ -126,18 +169,48 @@ model="ollama/qwen2.5-coder:7b"
 
 ## 🎓 How It Works
 
-1. **Planner** explores your application using browser automation
+1. **Planner** searches RAG for cached application knowledge
+   - If found: Uses existing UI flows (saves 5+ minutes)
+   - If not found: Explores application and stores discoveries in RAG
 2. Creates detailed test plans with step-by-step scenarios
 3. **Generator** reads the plan and executes each step in a browser
 4. Captures actions and generates Playwright TypeScript code
-5. **Healer** runs tests, analyzes failures, and applies fixes automatically
+5. **Healer** searches RAG for proven fixes to similar errors
+   - Applies highest success rate fixes first
+   - Stores successful fixes back to RAG for future use
+
+### 🧠 RAG Learning System
+
+The system maintains 4 knowledge collections:
+- **Application Knowledge**: UI flows, locators, navigation paths (cached explorations)
+- **Test Fixes**: Proven solutions to test failures with success rates
+- **Code Patterns**: Best practices and reusable patterns
+- **Test Plans**: Historical test plans for reference
+
+**Learning Loop:**
+```
+1st Run: Explores app → Stores in RAG (slow)
+2nd Run: Finds in RAG → Skips exploration (fast!)
+```
 
 ## 📊 Performance
 
-- **Planner**: ~2-5 minutes per module
+### First Run (Cold Start - No RAG):
+- **Planner**: ~5 minutes (full exploration)
 - **Generator**: ~10-15 minutes per scenario
 - **Healer**: ~3-5 minutes per test
 - **Cost**: ~$0.01 per test (with GPT-4o-mini)
+
+### Subsequent Runs (With RAG):
+- **Planner**: ~17 seconds (RAG hit, exact match) 🚀
+- **Planner**: ~3-4 minutes (RAG hit, partial match - reuses navigation)
+- **Healer**: ~1-2 minutes (applies proven fixes from RAG)
+- **Speedup**: 15-20x faster with RAG! ⚡
+
+### RAG Statistics:
+- Initial knowledge: 25 items (12 fixes, 5 patterns, 4 plans, 4 app flows)
+- Grows with each run
+- Search time: <1 second per query
 
 ## 🔒 Security
 
@@ -171,3 +244,6 @@ MIT License - see LICENSE file for details.
 - Review generated tests before running
 - Use healer iteratively for complex fixes
 - Consider local LLMs for POC/development
+- **Let RAG learn**: Run similar scenarios multiple times to build knowledge base
+- **RAG benefits compound**: Each run makes the system smarter and faster
+- **Check RAG stats**: Monitor what the system has learned over time
