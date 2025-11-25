@@ -1,69 +1,4 @@
-# 🎨 Visual Tech Stack - For LinkedIn & Presentations
-
-## Quick Tech Stack Overview
-
-```mermaid
-mindmap
-  root((Playwright AI<br/>Test Automation))
-    Frontend
-      React TypeScript
-      Server-Sent Events
-      Axios
-    Backend
-      FastAPI Python
-      Uvicorn ASGI
-      Pydantic
-    AI Layer
-      CrewAI Framework
-      OpenAI GPT-4o-mini
-      LangChain
-    Knowledge Base
-      ChromaDB Vectors
-      RAG System
-      Semantic Search
-    Automation
-      Playwright
-      MCP Protocol
-      Chromium Browser
-    Storage
-      Local Filesystem
-      Vector Database
-      JSON State
-```
-
----
-
-## Component Architecture (Detailed)
-
-```mermaid
-C4Context
-    title System Context - Playwright AI Test Automation
-
-    Person(user, "Test Engineer", "Creates and maintains<br/>automated tests")
-    
-    System_Boundary(system, "AI Test Automation Platform") {
-        System(ui, "React UI", "User interface for<br/>workflow control")
-        System(api, "FastAPI Backend", "Orchestrates AI agents<br/>and workflows")
-        System(agents, "CrewAI Agents", "3 specialized AI agents<br/>for test automation")
-        System(rag, "ChromaDB RAG", "Knowledge base with<br/>4 collections")
-    }
-    
-    System_Ext(browser, "Playwright Browser", "Automated browser<br/>for testing")
-    System_Ext(app, "Target Application", "Web app under test<br/>(e.g., Salesforce)")
-    System_Ext(llm, "OpenAI API", "GPT-4o-mini<br/>language model")
-
-    Rel(user, ui, "Interacts with", "HTTPS")
-    Rel(ui, api, "Sends requests", "REST + SSE")
-    Rel(api, agents, "Orchestrates", "Python SDK")
-    Rel(agents, rag, "Queries/Stores", "Vector search")
-    Rel(agents, llm, "Generates text", "API calls")
-    Rel(agents, browser, "Controls", "MCP Protocol")
-    Rel(browser, app, "Tests", "HTTP/HTTPS")
-    
-    UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
-```
-
----
+# 🎨 Visual Tech Stack
 
 ## Data Flow Diagram
 
@@ -133,7 +68,7 @@ graph TB
 
     subgraph "Layer 4: Intelligence"
         L4A[OpenAI GPT-4o-mini]
-        L4B[LangChain Tools]
+        L4B[CrewAI Framework]
         L4C[Prompt Engineering]
     end
 
@@ -190,113 +125,50 @@ graph TB
 
 ---
 
-## 📸 How to Use for LinkedIn
+## 📸 How to Use
 
-### Option 1: Static Image (Easiest)
-1. Open this file in VS Code
-2. Install "Markdown Preview Mermaid Support" extension
-3. Right-click on any diagram → "Copy as PNG"
-4. Post directly to LinkedIn
+### View in GitHub
+GitHub automatically renders Mermaid diagrams when you view this file in your repository.
 
-### Option 2: GitHub README (Best for Portfolio)
-1. Copy any diagram to your main README.md
-2. GitHub automatically renders Mermaid diagrams
-3. Share the GitHub link on LinkedIn
+### Export as Image
+1. **Using Mermaid Live Editor:**
+   - Go to https://mermaid.live
+   - Copy any diagram code above
+   - Click "Export" → PNG/SVG
+   - Use for presentations or LinkedIn posts
 
-### Option 3: Live Interactive (Most Impressive)
-1. Go to https://mermaid.live
-2. Copy diagram code
-3. Export as SVG/PNG with custom styling
-4. Or share the live link
+2. **Using VS Code:**
+   - Install "Markdown Preview Mermaid Support" extension
+   - Open this file and preview (Cmd+Shift+V)
+   - Right-click diagram → Copy as image
 
-### Option 4: Create Infographic
-Use tools like:
-- **Canva** - Import diagram as image + add text
-- **Figma** - Professional design polish
-- **Excalidraw** - Hand-drawn style recreation
+### For LinkedIn Posts
 
----
-
-## 🎯 LinkedIn Post Suggestions
-
-### Post 1: Architecture Overview
+**Example Post:**
 ```
-🚀 Built an AI-powered Test Automation Platform using multi-agent systems!
+🚀 Built an AI-powered Test Automation Platform with multi-agent orchestration!
 
 🏗️ Tech Stack:
 • React + TypeScript (Frontend)
-• FastAPI + Python (Backend)
-• CrewAI + GPT-4 (AI Orchestration)
+• FastAPI + Python (Backend)  
+• CrewAI + GPT-4o-mini (AI Agents)
 • ChromaDB (Vector RAG)
 • Playwright (Browser Automation)
+• MCP Protocol (Tool Integration)
 
-💡 What makes it unique:
-✅ 3 specialized AI agents work together
-✅ RAG system prevents redundant work
-✅ Self-healing tests that fix themselves
+💡 How it works:
+1️⃣ Planner Agent explores your app
+2️⃣ Generator Agent creates test code
+3️⃣ Healer Agent fixes failing tests automatically
+
+✅ Self-healing tests
+✅ RAG prevents redundant work
 ✅ Real-time workflow updates
 
-[Include Architecture Diagram]
+[Include diagram image]
 
-#AI #TestAutomation #Python #React #CrewAI
+#AI #TestAutomation #Python #React #CrewAI #Playwright
 ```
-
-### Post 2: Workflow Focus
-```
-⚡ How AI agents collaborate to create perfect tests:
-
-1️⃣ Planner Agent 🧠
-   Explores your app and maps the UI
-
-2️⃣ Generator Agent ⚙️
-   Creates Playwright test code
-
-3️⃣ Healer Agent 🔧
-   Fixes failing tests automatically
-
-📚 Powered by RAG (Retrieval-Augmented Generation)
-   Learns from every test run!
-
-[Include Workflow Sequence Diagram]
-
-#MachineLearning #QA #Automation
-```
-
-### Post 3: Tech Deep Dive
-```
-🔧 Building with MCP (Model Context Protocol)
-
-My AI agents use MCP to:
-🌐 Control browsers (Playwright)
-📁 Read/write test files
-🧠 Query vector databases
-💾 Store learned patterns
-
-This modular approach makes the system:
-✅ Extensible (add new tools easily)
-✅ Reliable (isolated components)
-✅ Scalable (parallel execution ready)
-
-[Include Component Diagram]
-
-#SoftwareArchitecture #AIEngineering
-```
-
----
-
-## 🎬 Demo Video Script
-
-If you want to create a demo video:
-
-1. **Intro (10s):** "AI-powered test automation with 3 intelligent agents"
-2. **Show UI (15s):** React interface, select workflow
-3. **Planner in action (20s):** Browser opening, exploring Salesforce
-4. **Generator in action (20s):** Creating test file in real-time
-5. **Healer in action (20s):** Running test, detecting error, fixing it
-6. **Show results (15s):** Working test file, RAG knowledge stored
-7. **Architecture overview (20s):** Quick tour through the diagram
-
-Total: ~2 minute video
 
 ---
 
