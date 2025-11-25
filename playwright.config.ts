@@ -9,7 +9,7 @@ export default defineConfig({
   reporter: 'html',
   use: {
     trace: 'on-first-retry',
-    headless: false, // headed for visibility
+    headless: false, // Run headed to see exploration
     storageState: 'auth_state.json', // <-- Reuse the saved login session
   },
 
@@ -20,7 +20,7 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         browserName: 'chromium',
         channel: 'chrome',
-        headless: false, // run headed
+        headless: false, // Run headed to see exploration
       },
     },
     {

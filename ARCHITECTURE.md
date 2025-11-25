@@ -1,354 +1,266 @@
-# Architecture Documentation
+# 🏗️ Playwright AI Test Automation - Architecture
 
-## Overview
+## 🎯 System Overview
 
-Playwright CrewAI Agents is a multi-agent system that automates Playwright test creation and maintenance using AI. The system uses three specialized agents that work sequentially to plan, generate, and heal tests.
+This project uses AI agents powered by CrewAI to automatically explore web applications, generate Playwright tests, and heal failing tests using RAG (Retrieval-Augmented Generation).
 
-## System Architecture
+---
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    User Input / CLI                          │
-└─────────────────┬───────────────────────────────────────────┘
-                  │
-                  ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   Main Controller                            │
-│              (src/test_ai_assistant/main.py)                │
-└─────────────────┬───────────────────────────────────────────┘
-                  │
-                  ▼
-┌─────────────────────────────────────────────────────────────┐
-│              PlaywrightAutomationCrew                        │
-│             (src/test_ai_assistant/crew.py)                 │
-│                                                               │
-│  ┌────────────┐  ┌────────────┐  ┌────────────┐            │
-│  │  Planner   │→ │ Generator  │→ │   Healer   │            │
-│  │   Agent    │  │   Agent    │  │   Agent    │            │
-│  └────────────┘  └────────────┘  └────────────┘            │
-└─────────────────┬───────────────────────────────────────────┘
-                  │
-                  ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    MCP Tools Layer                           │
-│                                                               │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │ Playwright   │  │ Playwright   │  │  Filesystem  │      │
-│  │  Test MCP    │  │  Browser MCP │  │     MCP      │      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
-└─────────────────┬───────────────────────────────────────────┘
-                  │
-                  ▼
-┌─────────────────────────────────────────────────────────────┐
-│              External Systems                                │
-│                                                               │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
-│  │ OpenAI   │  │  Browser │  │   File   │  │   Logs   │   │
-│  │   API    │  │(Chromium)│  │  System  │  │          │   │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
-└─────────────────────────────────────────────────────────────┘
-```
+## 📊 Architecture Diagram
 
-## Components
+```mermaid
+graph TB
+    subgraph "Frontend Layer"
+        UI[React UI<br/>Port 3000]
+        UI -->|SSE Events| API
+    end
 
-### 1. Agents Layer
+    subgraph "Backend Layer - FastAPI"
+        API[FastAPI Server<br/>Port 8000]
+        API -->|Orchestrates| CREW[CrewAI Orchestrator]
+    end
 
-#### Planner Agent
-- **Purpose**: Explores the application and creates comprehensive test plans
-- **Tools**: 6 essential tools (planner_setup_page, browser_navigate, browser_click, browser_type, browser_snapshot, browser_wait_for)
-- **LLM**: GPT-4o-mini (temperature: 0.0 for deterministic output)
-- **Output**: Markdown test plan with scenarios, steps, and expected results
-- **Location**: `test_plan/{timestamp}_test-plan.md`
+    subgraph "AI Agents - CrewAI"
+        CREW -->|Task 1| PLANNER[🧠 Planner Agent<br/>GPT-4o-mini]
+        CREW -->|Task 2| GENERATOR[⚙️ Generator Agent<br/>GPT-4o-mini]
+        CREW -->|Task 3| HEALER[🔧 Healer Agent<br/>GPT-4o-mini]
+        
+        PLANNER -->|Stores Knowledge| RAG
+        GENERATOR -->|Queries Patterns| RAG
+        HEALER -->|Queries Fixes| RAG
+    end
 
-#### Generator Agent
-- **Purpose**: Generates executable Playwright test code from test plans
-- **Tools**: 12 tools including generator-specific tools and browser interaction
-- **LLM**: GPT-4o-mini (temperature: 0.1 for slight creativity)
-- **Output**: TypeScript test files in `tests/` directory
-- **Key Feature**: Takes fresh browser snapshots before each action to avoid stale elements
+    subgraph "Knowledge Base - RAG"
+        RAG[ChromaDB Vector Store]
+        RAG -->|Collection 1| FIXES[Test Fixes<br/>Error Solutions]
+        RAG -->|Collection 2| PATTERNS[Code Patterns<br/>Best Practices]
+        RAG -->|Collection 3| PLANS[Test Plans<br/>Scenarios]
+        RAG -->|Collection 4| APPKNOW[App Knowledge<br/>UI Elements]
+    end
 
-#### Healer Agent
-- **Purpose**: Automatically debugs and fixes failing tests
-- **Tools**: All 75 tools available for maximum flexibility
-- **LLM**: GPT-4o-mini (temperature: 0.1)
-- **Strategy**: Error-message-only approach to prevent context overflow
-- **Constraints**: Max 10 iterations, 600s timeout
+    subgraph "MCP Tools Integration"
+        PLANNER -->|Uses| PWTEST[Playwright Test MCP<br/>playwright-test]
+        GENERATOR -->|Uses| PWTEST
+        HEALER -->|Uses| PWTEST
+        
+        PLANNER -->|Uses| FS[Filesystem MCP<br/>Read/Write Files]
+        GENERATOR -->|Uses| FS
+        HEALER -->|Uses| FS
+    end
 
-### 2. Tools Layer (MCP)
+    subgraph "Browser Automation"
+        PWTEST -->|Controls| BROWSER[Chromium Browser<br/>Playwright]
+        BROWSER -->|Interacts With| APP[Target Application<br/>e.g., Salesforce]
+    end
 
-#### Playwright Test MCP (39 tools)
-- Test generation tools: `generator_setup_page`, `generator_read_log`, `generator_write_test`
-- Test planning tools: `planner_setup_page`
-- Test running tools: `playwright_test_run_test`
-- Test debugging tools: Various verification and inspection tools
+    subgraph "Persistence Layer"
+        FS -->|Saves To| TESTDIR[tests/<br/>Generated Tests]
+        FS -->|Saves To| PLANDIR[test_plan/<br/>Test Plans]
+        RAG -->|Persists In| RAGDIR[rag_storage/<br/>Vector DB]
+    end
 
-#### Playwright Browser MCP (22 tools)
-- Navigation: `browser_navigate`, `browser_go_back`, `browser_go_forward`
-- Interaction: `browser_click`, `browser_type`, `browser_fill_form`
-- Verification: `browser_verify_element_visible`, `browser_verify_text_visible`
-- Inspection: `browser_snapshot`, `browser_wait_for`
-
-#### Filesystem MCP (14 tools)
-- File operations: `fs_read_file`, `fs_write_file`, `fs_move_file`
-- Directory operations: `fs_list_directory`, `fs_directory_tree`
-- File search: `fs_search_files`
-- File info: `fs_get_file_info`
-
-### 3. Configuration Layer
-
-#### agents.yaml
-Defines agent personalities:
-- Role (who they are)
-- Goal (what they achieve)
-- Backstory (context and expertise)
-
-#### tasks.yaml
-Defines workflows:
-- Step-by-step instructions
-- Tool usage guidelines
-- Expected outputs
-- Error handling rules
-
-### 4. Orchestration Layer
-
-#### CrewAI Framework
-- **Process**: Sequential execution (Planner → Generator → Healer)
-- **Memory**: Disabled to prevent stale scenario usage
-- **Cache**: Disabled for fresh execution
-- **Rate Limiting**: 15 RPM to avoid API limits
-- **Iteration Limits**: Agent-specific (Planner: 50, Generator: 50, Healer: 10)
-
-### 5. LLM Integration
-
-#### OpenAI GPT-4o-mini
-- **Cost**: $0.15/1M input tokens, $0.60/1M output tokens
-- **Per-test cost**: ~$0.009 (healer), less for planner/generator
-- **Context window**: 128K tokens
-- **Speed**: 2-5s per response
-- **Reliability**: High (proven in production)
-
-#### Retry Logic
-- Uses `tenacity` library
-- 3 attempts with exponential backoff
-- Handles transient failures gracefully
-
-## Data Flow
-
-### Planning Workflow
-```
-1. User provides scenario description
-   ↓
-2. Planner agent receives input
-   ↓
-3. Planner calls planner_setup_page (opens browser)
-   ↓
-4. Planner explores application:
-   - Navigates pages
-   - Clicks elements
-   - Takes snapshots
-   - Records observations
-   ↓
-5. Planner generates test plan (Markdown)
-   ↓
-6. Test plan saved to test_plan/{timestamp}_test-plan.md
+    style UI fill:#61dafb,stroke:#333,stroke-width:2px,color:#000
+    style API fill:#009688,stroke:#333,stroke-width:2px,color:#fff
+    style PLANNER fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
+    style GENERATOR fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
+    style HEALER fill:#95e1d3,stroke:#333,stroke-width:2px,color:#000
+    style RAG fill:#f38181,stroke:#333,stroke-width:3px,color:#fff
+    style BROWSER fill:#e74c3c,stroke:#333,stroke-width:2px,color:#fff
 ```
 
-### Generation Workflow
-```
-1. Generator receives test plan as context
-   ↓
-2. Generator calls generator_setup_page
-   ↓
-3. For each test scenario:
-   - Takes browser snapshot (fresh element refs)
-   - Executes test steps in browser
-   - Clicks, types, verifies actions
-   ↓
-4. Generator calls generator_read_log (gets recorded code)
-   ↓
-5. Generator calls generator_write_test (saves .spec.ts file)
-   ↓
-6. Test file created in tests/ directory
-```
+---
 
-### Healing Workflow
-```
-1. Healer receives test location
-   ↓
-2. Healer runs tests with playwright_test_run_test
-   ↓
-3. If test fails:
-   - Extracts error message
-   - Matches against COMMON FIXES patterns
-   - Identifies root cause (strict mode, timeout, etc.)
-   ↓
-4. Healer reads test file with fs_read_file
-   ↓
-5. Healer applies targeted fix:
-   - Updates locator (add exact: true)
-   - Fixes regex pattern
-   - Adjusts selector
-   ↓
-6. Healer writes fixed file with fs_write_file
-   ↓
-7. Healer re-runs test to verify fix
-   ↓
-8. Success or move to next failing test
-```
+## 🔄 Agent Workflow
 
-## Context Management
+```mermaid
+sequenceDiagram
+    participant User
+    participant UI as React UI
+    participant API as FastAPI
+    participant Planner as 🧠 Planner Agent
+    participant RAG as ChromaDB RAG
+    participant Browser as Playwright
+    participant Generator as ⚙️ Generator
+    participant Healer as 🔧 Healer
 
-### Problem
-LLMs have token limits (128K for GPT-4o-mini). Complex workflows can exceed this.
-
-### Solutions Implemented
-
-1. **Error-Message-Only Healing**
-   - Don't use browser snapshots for debugging
-   - Work only from Playwright error messages
-   - Reduces context from 133K to <20K tokens
-
-2. **Strict Iteration Limits**
-   - Planner: 50 iterations (needs exploration)
-   - Generator: 50 iterations (needs code creation)
-   - Healer: 10 iterations (strict to prevent overflow)
-   - Crew level: 10 iterations global limit
-
-3. **Tool Reduction**
-   - Planner: 6 tools (focused exploration)
-   - Generator: 12 tools (code generation)
-   - Healer: 75 tools (needs flexibility)
-
-4. **Fresh Snapshots**
-   - Generator takes new snapshot before EACH action
-   - Prevents stale element references
-   - Avoids accumulating old snapshot data
-
-5. **Disabled Memory/Cache**
-   - Prevents using old scenarios
-   - Forces fresh execution each time
-   - Reduces context accumulation
-
-## Error Handling
-
-### Common Test Errors
-
-1. **Strict Mode Violations**
-   - Pattern: Multiple elements match selector
-   - Fix: Add `exact: true` or use more specific selector
-
-2. **URL Regex Patterns**
-   - Pattern: Regex special chars not escaped
-   - Fix: Escape dots, slashes in URL patterns
-
-3. **Element Not Found**
-   - Pattern: Element selector changed
-   - Fix: Update selector based on error message
-
-4. **Timeout Errors**
-   - Pattern: Element takes too long to appear
-   - Fix: Increase timeout or add explicit wait
-
-### Recovery Strategy
-
-- **Max 2 attempts per test**
-- **Pattern matching** from COMMON FIXES library
-- **Mark as fixme** if still fails after 2 attempts
-- **Move to next test** to avoid getting stuck
-
-## Performance Metrics
-
-### Typical Execution Times
-- **Planner**: 60-120s (depends on exploration depth)
-- **Generator**: 30-90s per scenario
-- **Healer**: 180-300s (depends on number of failures)
-- **Full Pipeline**: 5-15 minutes for complete workflow
-
-### Token Usage
-- **Planner**: 10-30K tokens
-- **Generator**: 15-40K tokens per scenario
-- **Healer**: 15-60K tokens (optimized from 133K)
-
-### Cost Analysis
-- **Per Test (Healer)**: $0.009
-- **Per Scenario (Full Pipeline)**: $0.02-0.05
-- **100 Tests**: ~$0.90-2.00
-
-## Security Considerations
-
-1. **API Keys**: Stored in `.env`, never committed
-2. **Auth State**: `auth_state.json` contains session cookies, in .gitignore
-3. **Logs**: May contain URLs and element info, not committed
-4. **File Access**: MCP tools have filesystem access, use in trusted environments
-
-## Scalability
-
-### Current Limits
-- **Sweet Spot**: 1-50 tests
-- **Token Window**: 128K max
-- **Rate Limits**: OpenAI 15 RPM
-
-### Scaling Strategies
-1. **Batch Processing**: Run multiple agents in parallel
-2. **Hybrid Approach**: LLM pattern detection + regex bulk fixes
-3. **Caching**: Store common fix patterns
-4. **Traditional Tools**: Use for 100+ tests
-
-## Extension Points
-
-### Adding New Agents
-1. Define in `agents.yaml`
-2. Create task in `tasks.yaml`
-3. Add agent method in `crew.py`
-4. Add task method in `crew.py`
-5. Update `build_crew()` method
-
-### Adding New Tools
-1. Create MCP adapter in `tools/`
-2. Register in `PlaywrightAutomationCrew.__init__`
-3. Add to agent's tool list
-4. Document in task descriptions
-
-### Supporting New LLMs
-1. Update LLM config in `crew.py`
-2. Adjust temperature/parameters
-3. Test with sample scenarios
-4. Update documentation
-
-## Deployment
-
-### Local Development
-```bash
-python src/test_ai_assistant/main.py planner
+    User->>UI: Enter scenario: "Create account"
+    UI->>API: POST /api/workflow/start
+    API->>Planner: Execute with scenario
+    
+    Planner->>RAG: Search for existing knowledge
+    alt Knowledge exists
+        RAG-->>Planner: Return cached exploration
+        Planner->>API: Use cached data
+    else No knowledge found
+        Planner->>Browser: Launch & explore app
+        Browser-->>Planner: Page structure & elements
+        Planner->>RAG: Store discovered knowledge
+        Planner->>API: Return test plan
+    end
+    
+    API->>Generator: Execute with test plan
+    Generator->>Browser: Setup test environment
+    Generator->>Browser: Execute test steps
+    Browser-->>Generator: Record actions
+    Generator->>Generator: Write test file
+    Generator->>API: Return test file path
+    
+    API->>Healer: Execute with test file
+    Healer->>Browser: Run test
+    
+    alt Test fails
+        Browser-->>Healer: Error details
+        Healer->>RAG: Search for similar fixes
+        RAG-->>Healer: Return proven solutions
+        Healer->>Healer: Apply fix
+        Healer->>Browser: Re-run test
+        Healer->>RAG: Store successful fix
+    end
+    
+    Healer->>API: Return results
+    API->>UI: Stream events (SSE)
+    UI->>User: Display results
 ```
 
-### Docker Container
-```bash
-docker-compose up
+---
+
+## 🛠️ Technology Stack
+
+### **Frontend**
+- **React** (TypeScript) - UI framework
+- **Axios** - API communication
+- **Server-Sent Events (SSE)** - Real-time updates
+
+### **Backend**
+- **FastAPI** - Python web framework
+- **Uvicorn** - ASGI server
+- **Pydantic** - Data validation
+
+### **AI/ML Layer**
+- **CrewAI** - Multi-agent orchestration framework
+- **OpenAI GPT-4o-mini** - Language model
+- **LangChain** - LLM tooling
+
+### **Knowledge Base**
+- **ChromaDB** - Vector database for RAG
+- **Embeddings** - Semantic search capabilities
+
+### **Browser Automation**
+- **Playwright** - Browser automation
+- **MCP (Model Context Protocol)** - Tool integration
+  - `playwright-test` server
+  - `filesystem` server
+
+### **Storage**
+- **Local filesystem** - Test files, plans
+- **ChromaDB** - Vector embeddings
+- **JSON** - Session state, auth
+
+---
+
+## 📦 Key Components
+
+### 1. **Planner Agent** 🧠
+**Role:** Application explorer and test planner
+- Checks RAG for existing knowledge (avoids redundant exploration)
+- Launches browser to explore web applications
+- Documents UI elements, navigation paths, and user flows
+- Stores discoveries in RAG for future reuse
+- Generates comprehensive test plans
+
+### 2. **Generator Agent** ⚙️
+**Role:** Test script creator
+- Receives test plan from Planner (or file)
+- Queries RAG for code patterns and best practices
+- Executes manual test steps in browser
+- Records Playwright code from actions
+- Generates TypeScript test files
+
+### 3. **Healer Agent** 🔧
+**Role:** Test debugger and fixer
+- Runs failing tests to identify issues
+- Searches RAG for proven fixes
+- Applies fixes systematically (max 2 attempts)
+- Stores successful fixes in RAG
+- Marks unfixable tests as `test.fixme()`
+
+### 4. **RAG System** 🧠
+**Collections:**
+- **test_fixes** - Error patterns → solutions
+- **code_patterns** - Playwright best practices
+- **test_plans** - Scenario documentation
+- **application_knowledge** - UI elements & navigation
+
+---
+
+## 🚀 Workflow Modes
+
+### **Full Workflow** 
+Planner → Generator → Healer (end-to-end automation)
+
+### **Individual Agents**
+- **Planner Only:** Explore & document
+- **Generator Only:** Create tests from existing plan
+- **Healer Only:** Fix specific failing tests
+
+---
+
+## 🎯 Key Features
+
+✅ **Smart Caching** - RAG prevents redundant exploration  
+✅ **Context Chaining** - Agents pass outputs seamlessly  
+✅ **Self-Healing Tests** - Automatic fix application  
+✅ **Real-time Updates** - SSE streaming to UI  
+✅ **MCP Integration** - Modular tool system  
+✅ **Vector Search** - Semantic similarity matching  
+
+---
+
+## 📁 Project Structure
+
+```
+playwright_agents/
+├── ui/                          # React frontend
+│   └── src/
+│       └── App.tsx             # Main UI component
+├── api/
+│   └── server.py               # FastAPI backend
+├── src/test_ai_assistant/
+│   ├── crew.py                 # CrewAI agent definitions
+│   ├── config/
+│   │   ├── agents.yaml         # Agent configurations
+│   │   └── tasks.yaml          # Task definitions
+│   ├── rag/
+│   │   ├── vector_store.py     # ChromaDB interface
+│   │   └── retriever.py        # RAG query logic
+│   └── tools/
+│       ├── playwright_test_mcp.py  # Playwright MCP adapter
+│       └── filesystem_mcp.py       # File MCP adapter
+├── tests/                      # Generated test files
+├── test_plan/                  # Generated test plans
+├── rag_storage/                # Vector database
+└── playwright.config.ts        # Playwright configuration
 ```
 
-### CI/CD Pipeline
-- GitHub Actions workflow in `.github/workflows/ci.yml`
-- Linting, testing, security checks
-- Automated on push/PR
+---
 
-## Monitoring & Debugging
+## 🔗 Integration Points
 
-### Logs
-- Location: `logs/crew_execution_{timestamp}.log`
-- Level: INFO (configurable)
-- Contents: Agent actions, tool calls, LLM responses
+1. **Frontend ↔ Backend:** REST API + SSE
+2. **Backend ↔ CrewAI:** Python SDK
+3. **Agents ↔ RAG:** ChromaDB queries
+4. **Agents ↔ Browser:** MCP Playwright tools
+5. **Agents ↔ Filesystem:** MCP filesystem tools
 
-### Test Results
-- Playwright reports: `playwright-report/`
-- Test results: `test-results/`
-- Error context: Saved in test result directories
+---
 
-## Future Enhancements
+## 📈 Scalability Considerations
 
-1. **Visual Regression Testing**: Compare screenshots
-2. **API Testing**: Add API test generation
-3. **Performance Testing**: Load/stress test scenarios
-4. **CI Integration**: Seamless GitHub Actions integration
-5. **Multi-App Support**: Beyond Salesforce
-6. **Local LLM Support**: When models become capable enough
+- **Agent Parallelization:** Currently sequential, can be parallelized
+- **RAG Expansion:** Add more collections for domain knowledge
+- **Multi-Model Support:** Configurable LLM providers (OpenAI, Gemini, Groq)
+- **Distributed RAG:** ChromaDB can scale to cloud deployment
+
+---
+
+*Built with ❤️ using AI-powered test automation*

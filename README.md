@@ -2,6 +2,8 @@
 
 AI-powered Playwright test automation using CrewAI multi-agent framework.
 
+> 🧭 **New here?** Check out [NAVIGATION.md](NAVIGATION.md) for quick links to everything you need!
+
 ## 🤖 Agents
 
 1. **Planner Agent** - Explores application and creates comprehensive test plans
@@ -47,8 +49,10 @@ npm install
 4. Set up environment variables:
 ```bash
 cp .env.example .env
-# Edit .env and add your API keys
+# Edit .env and add your API keys and set mode
 ```
+
+**⚠️ Important**: Set `API_MODE=demo` for simulated agents (no API key needed) or `API_MODE=real` for actual AI agents (requires API key). See [Demo vs Real Mode Guide](docs/guides/DEMO_VS_REAL_MODE.md).
 
 5. Install Playwright browsers:
 ```bash
@@ -57,7 +61,36 @@ npx playwright install chromium
 
 ## 🎯 Usage
 
-### Run Individual Agents
+### 🎭 Demo Mode (No API Key Needed)
+
+Perfect for testing, demos, and development:
+
+```bash
+# Set demo mode in .env
+echo "API_MODE=demo" > .env
+
+# Start everything with one command!
+./start_all.sh
+```
+
+Visit http://localhost:3000 to see the UI with simulated agents.
+
+### 🚀 Real Mode (Requires API Key)
+
+For actual test automation:
+
+```bash
+# Set real mode and API key in .env
+echo "API_MODE=real" > .env
+echo "OPENAI_API_KEY=sk-your-key-here" >> .env
+
+# Start everything with one command!
+./start_all.sh
+```
+
+**📖 For detailed mode comparison**, see [DEMO_VS_REAL_MODE.md](docs/guides/DEMO_VS_REAL_MODE.md)
+
+### Run Individual Agents (CLI)
 
 **Planner** - Create test plan:
 ```bash
@@ -120,26 +153,39 @@ rm -rf rag_storage/
 
 ```
 playwright_agents/
-├── src/
+├── api/                         # Backend API server
+│   └── server.py               # FastAPI application with SSE
+├── ui/                          # Frontend React dashboard
+│   ├── src/
+│   │   ├── App.tsx             # Main UI component
+│   │   └── App.css             # Styling
+│   └── package.json
+├── src/                         # Core agent system
 │   └── test_ai_assistant/
 │       ├── config/
-│       │   ├── agents.yaml      # Agent configurations
-│       │   └── tasks.yaml       # Task workflows
-│       ├── rag/                 # RAG System (NEW!)
-│       │   ├── knowledge_base.py  # Seed data and knowledge
+│       │   ├── agents.yaml     # Agent configurations
+│       │   └── tasks.yaml      # Task workflows
+│       ├── rag/                # RAG System
+│       │   ├── knowledge_base.py  # Seed knowledge
 │       │   ├── vector_store.py    # ChromaDB integration
 │       │   └── retriever.py       # Query interface
-│       ├── tools/
-│       │   ├── rag_tools.py       # RAG tools for agents
-│       │   ├── playwright_mcp.py
-│       │   └── filesystem_mcp.py
-│       ├── crew.py              # Crew orchestration
-│       └── main.py              # Entry point
-├── rag_storage/                 # RAG learned knowledge (gitignored)
+│       ├── tools/              # Agent tools
+│       │   ├── rag_tools.py       # RAG tools
+│       │   ├── playwright_mcp.py  # Browser automation
+│       │   └── filesystem_mcp.py  # File operations
+│       ├── crew.py             # Crew orchestration
+│       └── main.py             # CLI entry point
+├── docs/                        # Documentation
+│   ├── api/                    # API documentation
+│   ├── guides/                 # User guides
+│   └── rag/                    # RAG documentation
+├── examples/                    # Example scripts and tests
+│   ├── scripts/                # Utility scripts
+│   ├── test_plans/             # Sample test plans
+│   └── sample_tests/           # Sample Playwright tests
 ├── tests/                       # Generated test files
-├── test_plan/                   # Generated test plans
-├── sample_tests/                # Example tests
-└── playwright.config.ts         # Playwright configuration
+├── rag_storage/                # RAG learned knowledge (gitignored)
+└── playwright.config.ts        # Playwright configuration
 ```
 
 ## ⚙️ Configuration
@@ -218,9 +264,40 @@ The system maintains 4 knowledge collections:
 - Auth state stored in `auth_state.json` (not committed)
 - No sensitive data in logs
 
+## 🎨 Web Dashboard (NEW!)
+
+Launch the interactive UI to visualize agents working in real-time:
+
+### Start Backend API Server
+```bash
+cd playwright_agents
+source venv/bin/activate
+python api/server.py
+# Running on http://localhost:8000
+```
+
+### Start Frontend Dashboard
+```bash
+cd ui
+npm start
+# Running on http://localhost:3000
+```
+
+### Features
+- 🤖 **3 Animated Robot Agents** - Watch Planner, Generator, and Healer work
+- 📊 **Live Progress Tracking** - Real-time progress bars and status updates
+- 🧠 **RAG Stats Display** - View knowledge base statistics
+- ⚙️ **Agent Selection** - Run full workflow or individual agents
+- 📡 **Activity Log** - See all agent events in real-time
+- 🎯 **Workflow Management** - Start, monitor, and track workflows
+
+**API Documentation:** http://localhost:8000/docs
+
+See [UI & Backend Guide](docs/api/UI_BACKEND_GUIDE.md) for detailed instructions.
+
 ## 🤝 Contributing
 
-Contributions welcome! Please read CONTRIBUTING.md first.
+Contributions welcome! Please read [CONTRIBUTING.md](docs/guides/CONTRIBUTING.md) first.
 
 ## 📝 License
 
@@ -234,7 +311,16 @@ MIT License - see LICENSE file for details.
 
 ## 📚 Documentation
 
-- [Context Management](CONTEXT_MANAGEMENT.md)
+### Quick Links
+- **[Quickstart Guide](docs/guides/QUICKSTART.md)** - Get started quickly
+- **[UI & Backend Guide](docs/api/UI_BACKEND_GUIDE.md)** - Dashboard and API guide
+- **[Architecture](docs/guides/ARCHITECTURE.md)** - System design
+- **[API Reference](docs/api/API.md)** - Backend endpoints
+- **[RAG Tools Guide](docs/rag/RAG_TOOLS_GUIDE.md)** - RAG system reference
+- **[Security Guide](docs/guides/SECURITY.md)** - Security best practices
+
+### All Documentation
+See the [docs/](docs/) folder for complete documentation.
 - [Healer Guide](HEALER_GUIDE.md)
 - [Sample Test Plans](sample_test_plans/)
 

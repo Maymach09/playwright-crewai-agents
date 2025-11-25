@@ -1,6 +1,7 @@
 import os
 import yaml
 import logging
+from logging.handlers import RotatingFileHandler
 from dotenv import load_dotenv
 from typing import Dict, Any
 from datetime import datetime
@@ -16,19 +17,47 @@ from src.test_ai_assistant.tools import RAG_TOOLS
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 
-# Setup logging
+# Setup logging - one timestamped file per workflow run
 os.makedirs('logs', exist_ok=True)
-log_filename = f'logs/crew_execution_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(log_filename),
-        logging.StreamHandler()
-    ]
-)
+
+# Use a global flag to ensure we only create one log file per workflow run
+_log_initialized = False
 logger = logging.getLogger(__name__)
-logger.info(f"Logging to: {log_filename}")
+
+def initialize_workflow_logging():
+    """Initialize logging once per workflow run with a timestamped file"""
+    global _log_initialized
+    
+    # Only initialize once per workflow run
+    if _log_initialized:
+        return
+    
+    # Create a new timestamped log file for this workflow run
+    log_filename = f'logs/crew_execution_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
+    
+    logger.setLevel(logging.INFO)
+    
+    # File handler for this workflow run
+    file_handler = logging.FileHandler(log_filename, mode='w')
+    file_handler.setLevel(logging.INFO)
+    file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(file_formatter)
+    
+    # Console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    console_handler.setFormatter(console_formatter)
+    
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
+    
+    logger.info(f"="*80)
+    logger.info(f"NEW WORKFLOW RUN - Logging to: {log_filename}")
+    logger.info(f"="*80)
+    
+    _log_initialized = True
+    logger.info(f"="*80)
 
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -66,6 +95,9 @@ class PlaywrightAutomationCrew:
     """Crew definition for Playwright Automation - Planner, Generator, and Healer."""
 
     def __init__(self):
+        # Initialize logging once per workflow run
+        initialize_workflow_logging()
+        
         logger.info("="*80)
         logger.info("Initializing PlaywrightAutomationCrew")
         logger.info("="*80)
@@ -79,20 +111,38 @@ class PlaywrightAutomationCrew:
         # ----------------------------
         logger.info("\n--- Initializing MCP Tool Adapters ---")
 
-        # Playwright Test MCP
+        # Playwright Test MCP (suppress connection errors)
         self.playwright_test_mcp = PlaywrightTestMCP()
-        self.playwright_test_tools = list(self.playwright_test_mcp.connect()) or []
-        logger.info(f"Playwright Test Tools: {len(self.playwright_test_tools)}")
+        try:
+            import warnings
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                self.playwright_test_tools = list(self.playwright_test_mcp.connect()) or []
+        except Exception:
+            self.playwright_test_tools = []
+        if self.playwright_test_tools:
+            logger.info(f"✅ Playwright Test Tools: {len(self.playwright_test_tools)}")
+        else:
+            logger.info(f"⚠️  Playwright Test MCP not available (optional)")
 
-        # Standard Playwright MCP
+        # Standard Playwright MCP (suppress connection errors)
         self.playwright_mcp = PlaywrightMCP()
-        self.playwright_tools = list(self.playwright_mcp.connect()) or []
-        logger.info(f"Playwright Browser Tools: {len(self.playwright_tools)}")
+        try:
+            import warnings
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                self.playwright_tools = list(self.playwright_mcp.connect()) or []
+        except Exception:
+            self.playwright_tools = []
+        if self.playwright_tools:
+            logger.info(f"✅ Playwright Browser Tools: {len(self.playwright_tools)}")
+        else:
+            logger.info(f"⚠️  Playwright Browser MCP not available (optional)")
 
         # Filesystem MCP
         self.filesystem_mcp = FilesystemMCP()
         self.fs_tools = list(self.filesystem_mcp.connect()) or []
-        logger.info(f"Filesystem Tools: {len(self.fs_tools)}")
+        logger.info(f"✅ Filesystem Tools: {len(self.fs_tools)}")
 
         # Combine all tools
         self.test_tools = self.playwright_test_tools + self.playwright_tools + self.fs_tools
@@ -292,6 +342,7 @@ class PlaywrightAutomationCrew:
     def generate_test_task(self):
         """
         Generation task - creates Playwright test scripts.
+        For full workflow (receives planner output as context).
         """
         logger.info("\n--- Creating generate_test_task ---")
         logger.info("Context: Will receive output from plan_test_task")
@@ -303,6 +354,24 @@ class PlaywrightAutomationCrew:
         )
         
         logger.info("✅ generate_test_task created")
+        return task_obj
+    
+    @task
+    def generate_test_task_standalone(self):
+        """
+        Generation task - creates Playwright test scripts.
+        For generator-only mode (uses context from inputs, not planner).
+        """
+        logger.info("\n--- Creating generate_test_task_standalone ---")
+        logger.info("Context: Will use context from inputs (test plan file)")
+        
+        task_obj = Task(
+            config=self.tasks_config["generate_test_task"],
+            # NO context - will use inputs['context'] directly
+            agent=self.test_generator_agent(),
+        )
+        
+        logger.info("✅ generate_test_task_standalone created")
         return task_obj
 
     @task
@@ -335,7 +404,7 @@ class PlaywrightAutomationCrew:
         
         agent_task_map = {
             "test_planner_agent": (self.test_planner_agent(), self.plan_test_task()),
-            "test_generator_agent": (self.test_generator_agent(), self.generate_test_task()),
+            "test_generator_agent": (self.test_generator_agent(), self.generate_test_task_standalone()),  # Use standalone version
             "test_healer_agent": (self.test_healer_agent(), self.heal_test_task()),
         }
 
@@ -371,6 +440,17 @@ class PlaywrightAutomationCrew:
         logger.info("Building full crew workflow: Planner → Generator → Healer")
         logger.info("="*80)
         
+        # Create task instances with proper context chaining
+        plan_task = self.plan_test_task()
+        generate_task = self.generate_test_task()
+        heal_task = self.heal_test_task()
+        
+        # Verify context connections
+        logger.info("Context chain verification:")
+        logger.info(f"  - plan_test_task: No context (first task)")
+        logger.info(f"  - generate_test_task: Context from plan_test_task: {generate_task.context is not None}")
+        logger.info(f"  - heal_test_task: Context from generate_test_task: {heal_task.context is not None}")
+        
         crew_obj = Crew(
             agents=[
                 self.test_planner_agent(),
@@ -378,9 +458,9 @@ class PlaywrightAutomationCrew:
                 self.test_healer_agent(),
             ],
             tasks=[
-                self.plan_test_task(),
-                self.generate_test_task(),
-                self.heal_test_task(),
+                plan_task,
+                generate_task,
+                heal_task,
             ],
             process=Process.sequential,
             verbose=True,
@@ -390,5 +470,5 @@ class PlaywrightAutomationCrew:
             max_iter=10,   # Limit iterations to prevent context overflow
         )
         
-        logger.info("✅ Full crew built successfully")
+        logger.info("✅ Full crew built successfully with proper context chaining")
         return crew_obj

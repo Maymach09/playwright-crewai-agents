@@ -1,6 +1,8 @@
 # Environment and secrets
 .env
 *.env
+.env.local
+.env.*.local
 auth_state.json
 .github
 
@@ -28,17 +30,27 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+pip-log.txt
+pip-delete-this-directory.txt
 
 # Logs
 logs/
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Test results
 test-results/
 playwright-report/
+coverage/
+.nyc_output/
 
 # Node modules
 node_modules/
+package-lock.json
+yarn.lock
+.pnpm-debug.log*
 
 # IDE
 .vscode/
@@ -46,30 +58,44 @@ node_modules/
 *.swp
 *.swo
 *~
+.project
+.classpath
+.settings/
 
 # OS
 .DS_Store
 Thumbs.db
+*.bak
+*.tmp
+*.temp
 
 # Playwright
 playwright/.auth/
+test-results/
+playwright/.cache/
 
 # RAG Storage (contains learned knowledge)
 rag_storage/
 
-# RAG Documentation (temporary/generated files)
-RAG_FILES_SUMMARY.md
-RAG_QUICK_REFERENCE.md
-RAG_IMPLEMENTATION.md
-RAG_INTEGRATION_ROADMAP.md
-test_rag_integration.py
-test_rag_tools.py
-test_rag.py
-
-# Test Plans (generated outputs)
-test_plan/
+# Generated outputs
+examples/test_plans/*.md
+examples/scripts/scenarios_test_accounts.txt
 
 # Credentials and Auth
 auth_state.json
-save-auth.ts
-scenarios_test_accounts.txt
+examples/scripts/auth_state.json
+examples/scripts/save-auth.ts
+
+# Lock files (optional - uncomment if you don't want to track)
+#uv.lock
+# poetry.lock
+
+# Temporary files
+REPO_STRUCTURE.txt
+CLEANUP_SUMMARY.md
+
+# UI build artifacts
+ui/build/
+ui/dist/
+ui/.env.local
+ui/.env.*.local

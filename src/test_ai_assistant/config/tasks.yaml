@@ -11,26 +11,30 @@ plan_test_task:
     Step 1: Check RAG for existing knowledge (SEARCH FIRST!)
     - **FIRST: Call `search_application_knowledge` with the scenario description**
     - Example: search_application_knowledge("delete account salesforce")
-    - **CRITICAL: Evaluate if RAG results match your EXACT scenario**
-      * Does the action match? (create vs delete vs edit vs view)
+    - **CRITICAL: Evaluate if RAG results match your scenario intelligently**
+      * Does the RAG contain the action you need? (e.g., if you need "create", does RAG have "create" or "create and delete"?)
       * Does the module match? (accounts vs contacts vs leads)
-      * Is the flow complete for your scenario?
-    - **If RAG has EXACT match (same action + module):**
-      * Use the cached navigation, locators, and flow directly
-      * Skip to Step 4 (documentation) using cached details
-      * Saves 5+ minutes of exploration!
-    - **If RAG has PARTIAL match (same module, different action):**
+      * Are the navigation steps and elements complete?
+    - **🎯 EXACT match rules (SKIP exploration if ANY of these):**
+      * RAG action EXACTLY matches your action (e.g., "create" matches "create")
+      * RAG action is a SUPERSET of your action (e.g., "create and delete" contains "create" - USE IT!)
+      * If scenario is "create account" and RAG has "create and delete account", that's EXACT match - use the "create" portion!
+      * **→ Skip to Step 4 (documentation) using cached navigation, locators, and flow**
+      * **→ Saves 5+ minutes of exploration!**
+    - **⚠️ PARTIAL match (explore only if truly different):**
+      * Same module but MISSING action (e.g., need "delete" but RAG only has "create", not "create and delete")
       * Use cached navigation to module (e.g., Home → Accounts)
-      * Proceed to Step 2 to explore the specific action (e.g., delete)
-      * You'll save time on navigation but need to discover the new action
+      * Proceed to Step 2 to explore the MISSING action only
     - **If RAG returns nothing or unrelated results:**
       * Proceed to Step 2 (full live exploration)
     
-    Step 2: Setup the browser environment (if exploration needed)
-    - **You must do this if:**
+    Step 2: Setup the browser environment (ONLY if exploration truly needed)
+    - **🚫 SKIP THIS if RAG has your action (even as part of compound action)!**
+    - **You must do this ONLY if:**
       * RAG had no results
-      * RAG had partial match (different action)
-      * RAG had low confidence match
+      * RAG has same module but MISSING your specific action entirely
+      * RAG has low confidence or unrelated results
+    - **DO NOT explore if RAG has "create and delete" and you need "create" - that's an EXACT match!**
     - Call `planner_setup_page` with these exact parameters:
       * project: "chromium"
       * seedFile: "tests/seed.spec.ts"
@@ -57,20 +61,21 @@ plan_test_task:
     - Include both happy path and edge cases
     
     Step 5: Store knowledge in RAG (MANDATORY AFTER EXPLORATION!)
-    - **⚠️ CRITICAL: If you explored the application (Steps 2-3), you MUST call `store_application_knowledge`**
-    - **This is NOT optional - you must cache what you discovered!**
-    - Provide:
+    - **⚠️ CRITICAL: If you used planner_setup_page or browser_snapshot, you MUST call `store_application_knowledge` BEFORE Step 6**
+    - **🚫 DO NOT PROCEED TO STEP 6 without calling store_application_knowledge first!**
+    - **This is NOT optional - your task is INCOMPLETE without this step!**
+    - Call `store_application_knowledge` with:
       * scenario: Brief description (e.g., "Delete Account in Salesforce")
       * navigation_path: Steps to reach feature (e.g., "Home → Accounts → Show Actions → Delete")
       * elements_discovered: All UI elements with exact locators (getByRole patterns)
       * application: App name (e.g., "salesforce")
       * module: Section name (e.g., "accounts")
       * action: Action type (e.g., "delete" - must match the ACTUAL action you explored)
+    - **VERIFICATION: Your final action BEFORE saving the file MUST be calling store_application_knowledge**
     - This caches your exploration for future tests!
-    - **DO NOT skip this step after exploration - it defeats the purpose of RAG!**
     
-    Step 6: Save the test plan (ONLY AFTER storing in RAG)
-    - **First complete Step 5, then save the file**
+    Step 6: Save the test plan (ONLY AFTER Step 5 is complete)
+    - **PREREQUISITE: You MUST have called store_application_knowledge in Step 5 first**
     - Use `fs_write_file` to save to test_plan/<timestamp>_test-plan.md
     - Use markdown format with clear sections and headings
     
@@ -102,8 +107,15 @@ plan_test_task:
     
     **IMPORTANT:**
     - **ALWAYS search RAG first before exploring!** (saves 5+ minutes per test)
-    - **RAG must match your EXACT action - don't use "create" knowledge for "delete"!**
-    - If RAG doesn't match, you MUST explore the browser
+    - **🎯 Smart matching: If RAG has "create and delete", you can use "create" part for "create" scenario!**
+    - **✅ EXACT match examples:**
+      * Need "create account" → RAG has "create and delete account" = EXACT (use create portion)
+      * Need "create account" → RAG has "create account" = EXACT (use directly)
+      * Need "delete account" → RAG has "create and delete account" = EXACT (use delete portion)
+    - **❌ PARTIAL match examples:**
+      * Need "delete account" → RAG ONLY has "create account" (missing delete) = PARTIAL (must explore)
+      * Need "view details" → RAG has "create account" (unrelated action) = PARTIAL (must explore)
+    - **DO NOT re-explore if RAG has your action - even as part of a compound action!**
     - Base everything on actual browser_snapshot outputs (or exact RAG cache)
     - Do NOT make assumptions about elements
     - Include exact element text and labels
@@ -260,8 +272,12 @@ heal_test_task:
     **STEP-BY-STEP WORKFLOW:**
     
     Step 1: Identify failing tests
+    - **Check the context parameter first!** If context contains test file paths:
+      * Split by comma if multiple files (e.g., "tests/file1.spec.ts,tests/file2.spec.ts")
+      * Use those specific files: ["tests/file1.spec.ts", "tests/file2.spec.ts"]
+    - If context is empty or "all", use: ["tests/"]
     - Call `playwright_test_run_test` with:
-      * locations: ["tests/"] (MUST be a list/array, not a string)
+      * locations: (MUST be a list/array from context or ["tests/"])
       * projects: ["chromium"]
     - Review the output to identify which tests failed
     - Note ONLY the error type and message (don't save full output)
@@ -307,7 +323,9 @@ heal_test_task:
       * locations: ["tests/test.spec.ts"] (the specific test file as a list)
       * projects: ["chromium"]
     - If PASSES: 
-      * Call `store_successful_fix` to cache the fix in RAG
+      * **🚫 MANDATORY: Call `store_successful_fix` to cache the fix in RAG before moving on!**
+      * **This is NOT optional - you MUST store every successful fix**
+      * Provide: error_message, solution, test_file, success_rate (e.g., "high")
       * Move to next failing test (go to Step 2)
     - If FAILS: Read new error message
       * If same error: Mark as test.fixme() with explanation

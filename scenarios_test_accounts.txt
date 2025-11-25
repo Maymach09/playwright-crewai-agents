@@ -1,2 +1,0 @@
-Navigate to the sales tab.
-Create a new lead. Ensure that the lead is created successfully.
