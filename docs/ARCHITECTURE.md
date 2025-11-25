@@ -73,53 +73,129 @@ graph TB
 ## 🔄 Agent Workflow
 
 ```mermaid
-sequenceDiagram
-    participant User
-    participant UI as React UI
-    participant API as FastAPI
-    participant Planner as 🧠 Planner Agent
-    participant RAG as ChromaDB RAG
-    participant Browser as Playwright
-    participant Generator as ⚙️ Generator
-    participant Healer as 🔧 Healer
+flowchart LR
+    subgraph Input
+        USER[👤 User Input<br/>Test Scenario]
+    end
 
-    User->>UI: Enter scenario: "Create account"
-    UI->>API: POST /api/workflow/start
-    API->>Planner: Execute with scenario
-    
-    Planner->>RAG: Search for existing knowledge
-    alt Knowledge exists
-        RAG-->>Planner: Return cached exploration
-        Planner->>API: Use cached data
-    else No knowledge found
-        Planner->>Browser: Launch & explore app
-        Browser-->>Planner: Page structure & elements
-        Planner->>RAG: Store discovered knowledge
-        Planner->>API: Return test plan
+    subgraph Processing
+        PLAN[🧠 Planner<br/>Explore & Document]
+        GEN[⚙️ Generator<br/>Create Test Code]
+        HEAL[🔧 Healer<br/>Fix & Validate]
     end
-    
-    API->>Generator: Execute with test plan
-    Generator->>Browser: Setup test environment
-    Generator->>Browser: Execute test steps
-    Browser-->>Generator: Record actions
-    Generator->>Generator: Write test file
-    Generator->>API: Return test file path
-    
-    API->>Healer: Execute with test file
-    Healer->>Browser: Run test
-    
-    alt Test fails
-        Browser-->>Healer: Error details
-        Healer->>RAG: Search for similar fixes
-        RAG-->>Healer: Return proven solutions
-        Healer->>Healer: Apply fix
-        Healer->>Browser: Re-run test
-        Healer->>RAG: Store successful fix
+
+    subgraph Storage
+        RAG[(📚 ChromaDB<br/>Knowledge Base)]
+        FILES[📁 Test Files<br/>& Plans]
     end
+
+    subgraph Output
+        RESULT[✅ Working Test<br/>Ready to Run]
+    end
+
+    USER --> PLAN
+    PLAN -->|Test Plan| GEN
+    PLAN -.->|Store Knowledge| RAG
+    RAG -.->|Query Knowledge| PLAN
+    GEN -->|Test File| HEAL
+    GEN -->|Save| FILES
+    RAG -.->|Code Patterns| GEN
+    HEAL -->|Fixed Test| RESULT
+    RAG -.->|Known Fixes| HEAL
+    HEAL -.->|Store Fix| RAG
+
+    style USER fill:#61dafb,stroke:#333,stroke-width:3px
+    style PLAN fill:#ff6b6b,stroke:#333,stroke-width:2px
+    style GEN fill:#4ecdc4,stroke:#333,stroke-width:2px
+    style HEAL fill:#95e1d3,stroke:#333,stroke-width:2px
+    style RAG fill:#f38181,stroke:#333,stroke-width:3px
+    style RESULT fill:#51cf66,stroke:#333,stroke-width:3px
+```
+
+**Flow:**
+1. **Planner** explores app → creates test plan → stores UI knowledge in RAG
+2. **Generator** receives plan → executes steps in browser → generates test file
+3. **Healer** runs test → fixes errors using RAG → validates working test
+
+---
+
+## Tech Stack Layers
+
+```mermaid
+graph TB
+    subgraph "Layer 1: Presentation"
+        L1A[React UI]
+        L1B[TypeScript]
+        L1C[CSS]
+    end
+
+    subgraph "Layer 2: API"
+        L2A[FastAPI]
+        L2B[SSE Streaming]
+        L2C[REST Endpoints]
+    end
+
+    subgraph "Layer 3: Orchestration"
+        L3A[CrewAI Framework]
+        L3B[Multi-Agent System]
+        L3C[Task Management]
+    end
+
+    subgraph "Layer 4: Intelligence"
+        L4A[OpenAI GPT-4o-mini]
+        L4B[CrewAI Framework]
+        L4C[Prompt Engineering]
+    end
+
+    subgraph "Layer 5: Knowledge"
+        L5A[ChromaDB Vectors]
+        L5B[RAG Retrieval]
+        L5C[Semantic Search]
+    end
+
+    subgraph "Layer 6: Automation"
+        L6A[Playwright]
+        L6B[MCP Protocol]
+        L6C[Browser Control]
+    end
+
+    subgraph "Layer 7: Storage"
+        L7A[Filesystem]
+        L7B[Vector DB]
+        L7C[JSON State]
+    end
+
+    L1A --> L2A
+    L1B --> L2B
+    L1C --> L2C
     
-    Healer->>API: Return results
-    API->>UI: Stream events (SSE)
-    UI->>User: Display results
+    L2A --> L3A
+    L2B --> L3B
+    L2C --> L3C
+    
+    L3A --> L4A
+    L3B --> L4B
+    L3C --> L4C
+    
+    L4A --> L5A
+    L4B --> L5B
+    L4C --> L5C
+    
+    L5A --> L6A
+    L5B --> L6B
+    L5C --> L6C
+    
+    L6A --> L7A
+    L6B --> L7B
+    L6C --> L7C
+
+    style L1A fill:#61dafb
+    style L2A fill:#009688
+    style L3A fill:#673ab7
+    style L4A fill:#ff9800
+    style L5A fill:#f38181
+    style L6A fill:#e74c3c
+    style L7A fill:#34495e
 ```
 
 ---
@@ -139,7 +215,6 @@ sequenceDiagram
 ### **AI/ML Layer**
 - **CrewAI** - Multi-agent orchestration framework
 - **OpenAI GPT-4o-mini** - Language model
-- **LangChain** - LLM tooling
 
 ### **Knowledge Base**
 - **ChromaDB** - Vector database for RAG
